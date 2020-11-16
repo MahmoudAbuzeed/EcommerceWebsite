@@ -2,6 +2,12 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
+const cors = require('cors');
+
+
+// routes
+const adminRoutes = require('./routes/admin/auth');
+
 
 const app = express();
 
@@ -12,7 +18,7 @@ app.listen(PORT, () => {
     console.log(`Server run on port : ${PORT}`)
 });
 
-// ---------- DateBase config ----------- //
+// ---------- DataBase config ----------- //
 
 mongoose.connect(process.env.MONGO_DB_URL, {
     useNewUrlParser: true,
@@ -31,4 +37,8 @@ mongoose.connection.on('error', (err) => {
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+app.use(cors());
+app.use(express.json());
+app.use('/api', adminRoutes)
 
