@@ -22,39 +22,47 @@ const userSchema = new mongoose.Schema({
         trim: true,
         unique: true,
         index: true,
-        lowercases: true
+        lowercase: true
     },
     email: {
         type: String,
         required: true,
         trim: true,
         unique: true,
-        lowercases: true
+        lowercase: true
     },
     hash_password: {
         type: String,
-        required: true,
-
+        required: true
     },
     role: {
         type: String,
         enum: ['user', 'admin'],
-        defualt: 'user'
+        default:'user'
     },
     contactNumber: { type: String },
-    profilePicture: { type: String }
+    pofilePicture: { type: String }
 }, { timestamps: true });
 
 
 userSchema.virtual('fullName')
-    .get(function () {
-        return `${this.firstName} ${this.lastName}`;
-    });
-userSchema.methods = {
-    authenticate: async function (password) {
+.get(function(){
+    return `${this.firstName} ${this.lastName}`;
+});
+
+/*userSchema.methods = {
+    authenticate: async function(password){
         return await bcrypt.compare(password, this.hash_password);
     }
-}
+}*/
+userSchema.methods.isPasswordMatch = function(password, hashed, callback) {
+    bcrypt.compare(password, hashed, (err, success) => {
+      if (err) {
+        return callback(err);
+      }
+      callback(null, success);
+    });
+  };
 
 
 module.exports = mongoose.model('User', userSchema);

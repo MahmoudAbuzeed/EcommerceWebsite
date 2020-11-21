@@ -47,36 +47,35 @@ exports.addCategory = async (req, res, next) => {
 
     const newCategory = new Category(categoryObj);
 
-    try{
+    if(newCategory){
         const saved = await newCategory.save();
         return res.send({
             success: true,
             category: saved
         })
-    } catch(err){
+    } else{
         next(err)
     }
     
-   /* cat.save((error, category) => {
-        if(error) return res.status(400).json({error});
-        if(category){
-            return res.status(201).json({category});
-        }*/
-    
+  
 }
 
 exports.getCategories = async (req, res, next)=> {
 
-    try{
-        const category = await Category.find();
-        const categoryList = createCategories(category)
+       
+    const category = await Category.find();
+    if(category){
+        const categoryList = await createCategories(category);
         return res.send({
-            success: true,
-            categoryList
-          });
-    } catch(err){
+         success: true,
+         categoryList
+       });
+    }else {
         next(err)
+
     }
+        
+    
 }
 
 exports.updateCategories = async (req, res, next) =>{

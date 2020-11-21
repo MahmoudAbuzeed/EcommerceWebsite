@@ -1,64 +1,74 @@
 const User = require('../../models/user');
 const jwt = require('jsonwebtoken');
-const bcypt = require('bcrypt');
+const bcrypt = require('bcrypt');
 const shortid = require('shortid');
 
 
-exports.signup = (req, res) => {
-    User.findOne({ email: req.body.email })
-        .exec(async (error, user) => {
-            if (user) return res.status(400).json({
-                message: 'Admin already registered'
-            });
+exports.signup = async(req, res, next) => {
+    const {firstName, lastName, email, password} = req.body;
+    const alreadyRegistered = await User.findOne({ email });
+    if(alreadyRegistered) {
+        const error = new Error(`Email address ${alreadyRegistered.email} is already taken`);
+        error.status = 400
+        next(error);
+      }
+      const hash_password = await bcrypt.hash(password, 10);
 
-            const { firstName, lastName, email, password } = req.body;
-            const hash_password = await bcypt.hash(password, 10);
-            const _user = new User({
-                firstName, lastName, email, hash_password, username: shortid.generate(),
-                role: 'admin'
-            });
-            _user.save((error, data) => {
-                if (error) {
-                    return res.status(400).json({
-                        error
-                    });
-                }
-                if (data) {
-                    res.status(201).json({
-                        data
-                    });
-                }
-            });
-        });
+      const newUser = new User({ 
+        firstName, 
+        lastName, 
+        email, 
+        hash_password,
+        username: shortid.generate(),
+        role: 'admin'
+    });
+    try {
+        const user = await newUser.save();
+        return res.send({ user });
+     }catch(e) {
+          next(e);
+      }
+
+           
 }
 
 
-exports.signin = (req, res) => {
-    User.findOne({ email: req.body.email })
-        .exec((error, user) => {
-            if (error) return res.status(400).json({ error });
-            if (user) {
-                if (user.authenticate(req.body.password) && user.role === 'admin') {
-                    const token = jwt.sign({ _id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
-                    const { _id, firstName, lastName, email, role, fullName } = user;
-                    res.cookie('token', token, { expireIn: '1d' });
-                    res.status(200).json({
-                        token,
-                        user: { _id, firstName, lastName, email, role, fullName }
-                    });
-                } else {
-                    return res.status(400).json({
-                        message: 'invalid password'
-                    })
-                }
+exports.signin = async (req, res, next) => {
 
-            } else {
-                res.status(400).json({ message: 'something went wrong' });
+    const { email, password } = req.body;
+    try {
+        //Retrieve user information
+        const user = await User.findOne({ email });
+        if (!user) {
+            const err = new Error(`The email ${email} was not found on our system`);
+            err.status = 401;
+            return next(err);
+        }
+
+        //Check the password
+        user.isPasswordMatch(password, user.hash_password, (err, matched) => {
+            if (matched && user.role === 'admin') {
+                 //Generate JWT
+                const secret = process.env.JWT_SECRET;
+                const expire = process.env.JWT_EXPIRATION;
+
+                const token = jwt.sign({ _id: user._id }, secret, { expiresIn: expire });
+                return res.send({ 
+                    token,
+                    user
+             });
             }
 
+            res.status(401).send({
+                error: 'Invalid username/password combination'
+            });
         });
 
-}
+    }catch(e){
+        next(e);
+    }
+
+    }
 
 
 exports.signout = (req, res) => {
